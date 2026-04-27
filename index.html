@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ParsDex — درگاه دیفای برای تریدرهای پارسی‌زبان</title>
+<link href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#07050f;--bg2:#0e0b1a;--bg3:#140f24;
+  --p:#8b5cf6;--p2:#a78bfa;--p3:#c4b5fd;
+  --pdim:rgba(139,92,246,0.12);--pglow:rgba(139,92,246,0.28);
+  --txt:#ede9fe;--txt2:#a89ec8;--txt3:#5b527a;
+  --line:rgba(139,92,246,0.18);--line2:rgba(255,255,255,0.06);
+  --font:'Vazirmatn',Tahoma,sans-serif;--r:14px;
+}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--txt);font-family:var(--font);font-size:16px;line-height:1.7;direction:rtl;overflow-x:hidden}
+
+/* ══ TICKER ══ */
+.ticker-wrap{background:var(--bg2);border-bottom:1px solid var(--line2);padding:.55rem 0;overflow:hidden;position:relative;z-index:50}
+.ticker-track{display:flex;width:max-content;animation:tick 40s linear infinite}
+.ticker-track:hover{animation-play-state:paused}
+@keyframes tick{from{transform:translateX(0)}to{transform:translateX(-50%)}}
+.t-item{display:inline-flex;align-items:center;gap:.45rem;padding:0 1.75rem;font-size:.76rem;font-weight:500;color:var(--txt3);border-right:1px solid var(--line2);white-space:nowrap}
+.t-sym{color:var(--txt2);font-weight:700;font-size:.73rem}
+.t-price{color:var(--txt);font-weight:600}
+.t-up{color:#4ade80}.t-dn{color:#f87171}
+.t-loading{color:var(--txt3);font-size:.72rem;animation:blink 1.5s ease-in-out infinite}
+@media(max-width:480px){
+  .t-item{font-size:.68rem;padding:0 1.1rem;gap:.3rem}
+  .t-sym{font-size:.65rem}
+  .ticker-wrap{padding:.45rem 0}
+}
+
+/* ══ NAV ══ */
+nav{
+  position:fixed;top:0;left:0;right:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 2.5rem;height:62px;
+  background:rgba(7,5,15,0.85);backdrop-filter:blur(24px);
+  border-bottom:1px solid var(--line2);
+}
+.nav-logo{display:flex;align-items:center;gap:.35rem;text-decoration:none}
+.nav-logo-text{font-size:1.15rem;font-weight:900;color:var(--txt);letter-spacing:-.3px}
+.nav-logo-text span{color:var(--p2)}
+.nav-links{display:flex;align-items:center;gap:1.75rem;list-style:none}
+.nav-links a{font-size:.84rem;font-weight:500;color:var(--txt3);text-decoration:none;transition:color .2s}
+.nav-links a:hover{color:var(--txt)}
+.nav-cta{background:var(--p);color:#fff;font-family:var(--font);font-weight:700;font-size:.84rem;padding:.48rem 1.2rem;border:none;border-radius:8px;cursor:pointer;box-shadow:0 0 16px var(--pglow);transition:all .2s}
+.nav-cta:hover{background:var(--p2);box-shadow:0 0 28px var(--pglow);transform:translateY(-1px)}
+
+/* hide nav links on mobile */
+@media(max-width:768px){
+  nav{padding:0 1.25rem}
+  .nav-links{display:none}
+}
+
+/* ══ HERO ══ */
+#hero{
+  position:relative;min-height:100vh;
+  display:flex;align-items:center;justify-content:center;
+  overflow:hidden;padding-top:62px;
+}
+.hero-img{
+  position:absolute;inset:0;z-index:0;
+  background:url('https://images.unsplash.com/photo-1639762681485-074b7f938ba0?w=1800&q=85&fit=crop') center/cover no-repeat;
+}
+.hero-img::after{
+  content:'';position:absolute;inset:0;
+  background:
+    linear-gradient(to left, rgba(7,5,15,0.55) 0%, rgba(7,5,15,0.82) 55%, rgba(7,5,15,0.97) 100%),
+    linear-gradient(to top, rgba(7,5,15,0.98) 0%, transparent 40%);
+}
+.hero-canvas{position:absolute;inset:0;z-index:1;pointer-events:none;overflow:hidden}
+.hero-canvas svg{width:100%;height:100%}
+.hero-grid-overlay{
+  position:absolute;inset:0;z-index:2;pointer-events:none;
+  background-image:linear-gradient(rgba(139,92,246,.05) 1px,transparent 1px),linear-gradient(90deg,rgba(139,92,246,.05) 1px,transparent 1px);
+  background-size:72px 72px;
+  mask-image:radial-gradient(ellipse 80% 80% at 50% 50%,black 20%,transparent 80%);
+}
+.hero-inner{
+  position:relative;z-index:3;width:100%;max-width:1260px;
+  display:grid;grid-template-columns:1fr 1fr;
+  gap:3rem;align-items:center;padding:3rem 4rem;
+}
+/* ── Responsive hero ── */
+@media(max-width:960px){
+  .hero-inner{grid-template-columns:1fr;padding:2.5rem 2rem;text-align:center}
+  .hero-right-col{display:none}
+  .hero-trust{justify-content:center}
+  .hero-sub{margin-left:auto;margin-right:auto}
+  .hero-actions{justify-content:center}
+}
+@media(max-width:480px){
+  .hero-inner{padding:2rem 1.25rem}
+  h1{font-size:2rem;letter-spacing:-1px}
+}
+
+.hero-pill{
+  display:inline-flex;align-items:center;gap:.5rem;
+  border:1px solid var(--line);background:rgba(139,92,246,.1);
+  color:var(--p3);font-size:.74rem;font-weight:600;
+  padding:.35rem 1rem;border-radius:100px;margin-bottom:1.75rem;
+}
+.pill-dot{width:6px;height:6px;border-radius:50%;background:var(--p2);animation:blink 2s ease-in-out infinite;flex-shrink:0}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.2}}
+
+h1{font-size:clamp(2rem,4vw,3.8rem);font-weight:900;line-height:1.1;letter-spacing:-2px;color:var(--txt);margin-bottom:1.4rem}
+h1 em{font-style:normal;background:linear-gradient(135deg,var(--p3),var(--p));-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+
+.hero-sub{font-size:1rem;color:var(--txt2);line-height:2;margin-bottom:2rem;max-width:460px}
+.hero-sub b{color:var(--p3);font-weight:600}
+
+.hero-actions{display:flex;align-items:flex-start;flex-direction:column;gap:.75rem;margin-bottom:2rem;width:fit-content}
+@media(max-width:960px){.hero-actions{align-items:center;width:auto}}
+
+.btn-p{background:var(--p);color:#fff;font-family:var(--font);font-weight:800;font-size:.95rem;padding:.85rem 1.75rem;border:none;border-radius:var(--r);cursor:pointer;box-shadow:0 0 28px var(--pglow);transition:all .25s}
+.btn-p:hover{background:var(--p2);transform:translateY(-2px);box-shadow:0 0 44px var(--pglow)}
+.btn-s{background:rgba(255,255,255,.04);color:var(--txt2);font-family:var(--font);font-weight:600;font-size:.95rem;padding:.85rem 1.5rem;border:1px solid var(--line);border-radius:var(--r);cursor:pointer;text-decoration:none;display:inline-block;transition:all .25s}
+.btn-s:hover{border-color:var(--p);color:var(--p3);background:var(--pdim)}
+
+/* CTA row with trust text beside button */
+.cta-row{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap}
+@media(max-width:960px){.cta-row{justify-content:center}}
+.trust-micro{font-size:.78rem;color:var(--txt3);display:flex;align-items:center;gap:.4rem}
+.trust-micro svg{width:13px;height:13px;stroke:var(--p2);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+
+.hero-trust{display:flex;align-items:center;gap:1.25rem;flex-wrap:wrap}
+.trust-badge{display:flex;align-items:center;gap:.4rem;font-size:.76rem;color:var(--txt3);font-weight:500}
+.trust-badge svg{width:13px;height:13px;stroke:var(--p2);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0}
+.tsep{width:1px;height:14px;background:var(--line2);flex-shrink:0}
+
+/* ── HERO RIGHT VISUAL ── */
+.hero-right-col{position:relative;display:flex;align-items:center;justify-content:center}
+.hero-visual{position:relative;width:100%;max-width:460px}
+.hero-visual svg{width:100%;height:auto;filter:drop-shadow(0 0 60px rgba(139,92,246,.35))}
+@media(max-width:960px){.hero-right-col{display:none}}
+
+/* ══ STATS BAR ══ */
+.stats-bar{background:var(--bg2);border-top:1px solid var(--line2);border-bottom:1px solid var(--line2);display:flex;overflow:hidden;position:relative;z-index:2}
+.stat-cell{flex:1;padding:1.1rem 1.5rem;text-align:center;border-left:1px solid var(--line2)}
+.stat-cell:last-child{border-left:none}
+.stat-val{font-size:1.25rem;font-weight:900;color:var(--txt);letter-spacing:-1px;line-height:1;margin-bottom:.28rem}
+.stat-lbl{font-size:.68rem;color:var(--txt3);font-weight:500;letter-spacing:.5px}
+@media(max-width:600px){
+  .stats-bar{flex-wrap:wrap}
+  .stat-cell{flex:0 0 50%;border-bottom:1px solid var(--line2)}
+  .stat-cell:nth-child(odd){border-left:none}
+  .stat-cell:nth-child(even){border-left:1px solid var(--line2)}
+  .stat-cell:last-child,.stat-cell:nth-last-child(2){border-bottom:none}
+}
+
+/* ══ SECTIONS ══ */
+.sec-divider{height:1px;background:var(--line2)}
+section{padding:6rem 2rem;position:relative}
+@media(max-width:600px){section{padding:4rem 1.25rem}}
+.wrap{max-width:1100px;margin:0 auto}
+.eyebrow{font-size:.7rem;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--p2);display:flex;align-items:center;gap:.75rem;margin-bottom:1.4rem}
+.eyebrow::after{content:'';flex:1;max-width:40px;height:1px;background:var(--p)}
+.sec-h2{font-size:clamp(1.6rem,3.2vw,2.6rem);font-weight:900;letter-spacing:-1px;line-height:1.15;color:var(--txt);margin-bottom:.9rem}
+.sec-lead{font-size:.98rem;color:var(--txt2);max-width:580px;line-height:2;margin-bottom:3.5rem}
+
+/* ══ WHY DEX ══ */
+#why-dex{background:var(--bg)}
+.split{display:grid;grid-template-columns:1fr 1fr;gap:4rem;align-items:center}
+@media(max-width:768px){.split{grid-template-columns:1fr;gap:2.5rem}}
+.feat-list{display:flex;flex-direction:column;gap:1px;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden}
+.feat-row{display:flex;align-items:flex-start;gap:1.1rem;padding:1.35rem;background:var(--bg2);border-bottom:1px solid var(--line2);transition:background .2s}
+.feat-row:last-child{border-bottom:none}
+.feat-row:hover{background:var(--bg3)}
+.feat-icon-wrap{width:38px;height:38px;border-radius:9px;background:var(--pdim);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.feat-icon-wrap svg{width:17px;height:17px;stroke:var(--p2);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.feat-title{font-size:.92rem;font-weight:800;color:var(--txt);margin-bottom:.3rem}
+.feat-text{font-size:.85rem;color:var(--txt2);line-height:1.85}
+
+/* abstract rings */
+.abstract-wrap{position:relative;width:100%;aspect-ratio:1;max-width:340px;margin:0 auto}
+.ar{position:absolute;border-radius:50%;border:1px solid var(--line2)}
+.ar1{inset:0;animation:spin 22s linear infinite}
+.ar2{inset:13%;border-color:rgba(139,92,246,.18);animation:spin 16s linear infinite reverse}
+.ar3{inset:26%;border-color:rgba(167,139,250,.12);animation:spin 28s linear infinite}
+.ar4{inset:38%;border-color:var(--line);animation:spin 12s linear infinite reverse}
+@keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
+.ar-center{position:absolute;inset:44%;background:linear-gradient(135deg,var(--p),var(--p2));border-radius:50%;box-shadow:0 0 50px var(--pglow)}
+.or-dot{position:absolute;width:7px;height:7px;border-radius:50%;background:var(--p2);box-shadow:0 0 6px var(--p)}
+.od1{top:2%;left:50%;transform:translateX(-50%)}
+.od2{bottom:2%;left:50%;transform:translateX(-50%)}
+.od3{left:2%;top:50%;transform:translateY(-50%)}
+.od4{right:2%;top:50%;transform:translateY(-50%)}
+.ab-lbl{position:absolute;background:var(--bg2);border:1px solid var(--line);border-radius:8px;padding:.32rem .65rem;font-size:.66rem;font-weight:700;color:var(--p3);white-space:nowrap}
+.al1{top:5%;right:3%}.al2{bottom:9%;left:3%}.al3{top:43%;left:-4%}.al4{top:17%;left:10%}
+
+/* ══ WHY PARSDEX ══ */
+#why-parsdex{background:var(--bg2)}
+.bento{display:grid;grid-template-columns:1fr 1fr;gap:1px;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden}
+@media(max-width:600px){.bento{grid-template-columns:1fr}}
+.bento-cell{background:var(--bg);padding:2rem;border-left:1px solid var(--line2);border-bottom:1px solid var(--line2);transition:background .25s;position:relative;overflow:hidden}
+.bento-cell:hover{background:var(--bg3)}
+.bento-cell:nth-child(odd){border-left:none}
+.bento-cell:nth-child(3),.bento-cell:nth-child(4){border-bottom:none}
+@media(max-width:600px){.bento-cell{border-left:none !important}}
+@media(max-width:600px){.bento-cell:last-child{border-bottom:none}}
+.bento-icon{width:42px;height:42px;border-radius:11px;background:var(--pdim);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;margin-bottom:1.1rem}
+.bento-icon svg{width:19px;height:19px;stroke:var(--p2);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.bento-idx{font-size:2.2rem;font-weight:900;color:rgba(139,92,246,.1);letter-spacing:-2px;line-height:1;position:absolute;top:1.4rem;left:1.4rem}
+.bento-title{font-size:.97rem;font-weight:800;color:var(--txt);margin-bottom:.55rem;position:relative}
+.bento-text{font-size:.87rem;color:var(--txt2);line-height:1.9;position:relative}
+
+/* ══ WHO FOR ══ */
+#who-for{background:var(--bg)}
+.who-grid{display:grid;grid-template-columns:1fr 1fr;gap:1.5rem;margin-bottom:1.5rem}
+@media(max-width:680px){.who-grid{grid-template-columns:1fr}}
+.who-card{border:1px solid var(--line2);border-radius:var(--r);overflow:hidden;transition:border-color .25s}
+.who-card:hover{border-color:var(--line)}
+.who-head{padding:1.35rem 1.6rem;background:var(--bg2);border-bottom:1px solid var(--line2);display:flex;align-items:center;gap:.7rem}
+.who-icon-wrap{width:38px;height:38px;border-radius:9px;background:var(--pdim);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.who-icon-wrap svg{width:18px;height:18px;stroke:var(--p2);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.who-head-title{font-size:.93rem;font-weight:800;color:var(--txt)}
+.who-body{padding:1.35rem 1.6rem;background:var(--bg)}
+.who-items{list-style:none;display:flex;flex-direction:column;gap:.8rem}
+.who-items li{display:flex;align-items:flex-start;gap:.7rem;font-size:.87rem;color:var(--txt2);line-height:1.75}
+.who-items li::before{content:'';width:5px;height:5px;border-radius:50%;background:var(--p);flex-shrink:0;margin-top:.57rem}
+.who-footer{border:1px solid var(--line);border-radius:var(--r);padding:1.5rem 2rem;text-align:center;background:var(--pdim)}
+.who-footer p{font-size:1rem;color:var(--txt2);margin-bottom:1.1rem}
+.who-footer strong{color:var(--p3);font-weight:700}
+.who-footer .btn-ghost{display:inline-flex;align-items:center;gap:.4rem;background:transparent;color:var(--p2);font-family:var(--font);font-weight:700;font-size:.88rem;padding:.6rem 1.4rem;border:1px solid var(--line);border-radius:var(--r);cursor:pointer;text-decoration:none;transition:all .2s}
+.who-footer .btn-ghost:hover{background:var(--pdim);border-color:var(--p2)}
+
+/* ══ HOW IT WORKS ══ */
+#how-it-works{background:var(--bg2)}
+.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:1px;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden}
+@media(max-width:768px){.steps{grid-template-columns:1fr 1fr}}
+@media(max-width:440px){.steps{grid-template-columns:1fr}}
+.step{padding:1.85rem 1.4rem;background:var(--bg);border-left:1px solid var(--line2);transition:background .2s;position:relative;overflow:hidden}
+.step:first-child{border-left:none}
+@media(max-width:768px){.step{border-left:none;border-top:1px solid var(--line2)}}
+@media(max-width:768px){.step:nth-child(odd){border-left:none}.step:nth-child(even){border-left:1px solid var(--line2)}}
+.step:hover{background:var(--bg3)}
+.step-icon{width:42px;height:42px;border-radius:11px;background:var(--pdim);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;margin-bottom:1.1rem}
+.step-icon svg{width:18px;height:18px;stroke:var(--p2);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.step-n{position:absolute;top:.9rem;left:.9rem;font-size:1.9rem;font-weight:900;color:rgba(139,92,246,.09);letter-spacing:-2px;line-height:1}
+.step-title{font-size:.9rem;font-weight:800;color:var(--txt);margin-bottom:.45rem}
+.step-text{font-size:.83rem;color:var(--txt2);line-height:1.85}
+
+/* ══ TRUST ══ */
+#trust{background:var(--bg)}
+.trust-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1px;border:1px solid var(--line2);border-radius:var(--r);overflow:hidden}
+@media(max-width:600px){.trust-grid{grid-template-columns:1fr}}
+.trust-cell{padding:2rem;background:var(--bg2);border-left:1px solid var(--line2);border-bottom:1px solid var(--line2);transition:background .2s}
+.trust-cell:hover{background:var(--bg3)}
+.trust-cell:nth-child(odd){border-left:none}
+.trust-cell:nth-child(3),.trust-cell:nth-child(4){border-bottom:none}
+@media(max-width:600px){.trust-cell{border-left:none !important;border-bottom:1px solid var(--line2) !important}.trust-cell:last-child{border-bottom:none !important}}
+.trust-icon{width:42px;height:42px;border-radius:11px;background:var(--pdim);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;margin-bottom:.9rem}
+.trust-icon svg{width:19px;height:19px;stroke:var(--p2);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.trust-tag{display:inline-block;font-size:.66rem;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:var(--p2);background:var(--pdim);border:1px solid var(--line);padding:.18rem .55rem;border-radius:5px;margin-bottom:.7rem}
+.trust-title{font-size:.97rem;font-weight:800;color:var(--txt);margin-bottom:.45rem}
+.trust-text{font-size:.86rem;color:var(--txt2);line-height:1.9}
+
+/* ══ CTA ══ */
+#cta{background:var(--bg2);padding:6rem 2rem}
+.cta-inner{max-width:640px;margin:0 auto;text-align:center;border:1px solid var(--line);border-radius:20px;padding:4.5rem 2.5rem;position:relative;overflow:hidden;background:var(--bg)}
+.cta-inner::before{content:'';position:absolute;top:-100px;left:50%;transform:translateX(-50%);width:500px;height:500px;border-radius:50%;background:radial-gradient(circle,rgba(139,92,246,.13),transparent 65%);pointer-events:none}
+.cta-h2{font-size:clamp(1.6rem,3.5vw,2.3rem);font-weight:900;letter-spacing:-1px;color:var(--txt);margin-bottom:.65rem;position:relative}
+.cta-sub{font-size:.93rem;color:var(--txt2);margin-bottom:2.25rem;position:relative}
+.cta-acts{display:flex;gap:1rem;justify-content:center;flex-wrap:wrap;position:relative}
+@media(max-width:480px){.cta-inner{padding:3rem 1.5rem}}
+
+/* ══ FOOTER ══ */
+footer{background:var(--bg);border-top:1px solid var(--line2);padding:2.75rem 2rem}
+.foot-inner{max-width:1100px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:1.5rem}
+.foot-logo{display:flex;align-items:center;gap:.5rem}
+.foot-logo-text{font-size:1.02rem;font-weight:900;color:var(--txt2)}
+.foot-logo-text span{color:var(--p2)}
+.foot-note{font-size:.75rem;color:var(--txt3);max-width:480px;line-height:1.85}
+.foot-copy{font-size:.72rem;color:var(--txt3);opacity:.5;margin-top:.3rem}
+@media(max-width:600px){.foot-inner{flex-direction:column;text-align:center}}
+
+/* ══ REVEAL ══ */
+.rv{opacity:0;transform:translateY(20px);transition:opacity .6s ease,transform .6s ease}
+.rv.on{opacity:1;transform:translateY(0)}
+.d1{transition-delay:.1s}.d2{transition-delay:.18s}.d3{transition-delay:.26s}.d4{transition-delay:.34s}
+</style>
+</head>
+<body>
+
+<!-- ══ TICKER (real-time via CoinGecko) ══ -->
+<div class="ticker-wrap" style="margin-top:62px">
+  <div class="ticker-track" id="ticker-track">
+    <span class="t-item t-loading">در حال دریافت قیمت‌ها...</span>
+  </div>
+</div>
+
+<!-- ══ NAV ══ -->
+<nav>
+  <a class="nav-logo" href="#">
+    <!-- DIAMOND LOGO -->
+    <svg width="28" height="28" viewBox="0 0 40 46" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="dg1" x1="0" y1="0" x2="40" y2="46" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#7c3aed"/>
+          <stop offset="100%" stop-color="#a855f7"/>
+        </linearGradient>
+        <linearGradient id="dg2" x1="0" y1="0" x2="40" y2="20" gradientUnits="userSpaceOnUse">
+          <stop offset="0%" stop-color="#c084fc"/>
+          <stop offset="100%" stop-color="#a855f7"/>
+        </linearGradient>
+      </defs>
+      <!-- Main diamond body -->
+      <path d="M20 2 L38 16 L20 44 L2 16 Z" fill="url(#dg1)"/>
+      <!-- Top crown facets -->
+      <path d="M20 2 L38 16 L28 14 L20 2Z" fill="url(#dg2)" opacity="0.85"/>
+      <path d="M20 2 L12 14 L2 16 L20 2Z" fill="white" opacity="0.15"/>
+      <!-- Mid horizontal belt -->
+      <path d="M2 16 L12 14 L28 14 L38 16 L28 19 L12 19 Z" fill="white" opacity="0.12"/>
+      <!-- Left lower facet -->
+      <path d="M2 16 L12 19 L20 44Z" fill="white" opacity="0.04"/>
+      <!-- Right lower facet -->
+      <path d="M38 16 L28 19 L20 44Z" fill="white" opacity="0.08"/>
+      <!-- Inner glow highlight -->
+      <path d="M20 6 L34 17 L20 15 L6 17 Z" fill="white" opacity="0.1"/>
+      <!-- Sparkle -->
+      <circle cx="29" cy="8" r="1.5" fill="white" opacity="0.7"/>
+    </svg>
+    <span class="nav-logo-text">Pars<span>Dex</span></span>
+  </a>
+  <ul class="nav-links">
+    <li><a href="#why-dex">چرا DEX؟</a></li>
+    <li><a href="#why-parsdex">ویژگی‌ها</a></li>
+    <li><a href="#how-it-works">نحوه کار</a></li>
+    <li><a href="#trust">امنیت</a></li>
+  </ul>
+  <button class="nav-cta">Launch App ↗</button>
+</nav>
+
+<!-- ══ HERO ══ -->
+<section id="hero">
+  <div class="hero-img"></div>
+  <div class="hero-canvas">
+    <svg viewBox="0 0 1440 900" preserveAspectRatio="xMidYMid slice" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <linearGradient id="lg" x1="0%" y1="0%" x2="100%" y2="0%">
+          <stop offset="0%" stop-color="rgba(139,92,246,0)"/>
+          <stop offset="50%" stop-color="rgba(139,92,246,0.35)"/>
+          <stop offset="100%" stop-color="rgba(139,92,246,0)"/>
+        </linearGradient>
+        <linearGradient id="cg" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stop-color="rgba(139,92,246,0.22)"/>
+          <stop offset="100%" stop-color="rgba(139,92,246,0)"/>
+        </linearGradient>
+      </defs>
+      <path d="M-100 600 Q200 575 400 535 Q600 495 800 458 Q1000 422 1200 400 Q1360 385 1540 378" stroke="url(#lg)" stroke-width="1" fill="none" opacity=".55"/>
+      <path d="M-100 660 Q300 628 500 585 Q700 545 900 512 Q1100 480 1300 460 Q1410 450 1540 444" stroke="url(#lg)" stroke-width=".7" fill="none" opacity=".35"/>
+      <path d="M760 700 Q840 655 900 598 Q950 552 990 510 Q1040 462 1090 428 Q1150 392 1210 368 Q1280 344 1360 326 Q1400 318 1440 310 L1440 900 L760 900Z" fill="url(#cg)" opacity=".22"/>
+      <path d="M760 700 Q840 655 900 598 Q950 552 990 510 Q1040 462 1090 428 Q1150 392 1210 368 Q1280 344 1360 326 Q1400 318 1440 310" stroke="rgba(139,92,246,.45)" stroke-width="1.5" fill="none"/>
+      <circle cx="990" cy="510" r="4" fill="rgba(167,139,250,.8)"><animate attributeName="opacity" values=".8;.2;.8" dur="3s" repeatCount="indefinite"/></circle>
+      <circle cx="1090" cy="428" r="3" fill="rgba(167,139,250,.6)"><animate attributeName="opacity" values=".6;.15;.6" dur="4.2s" repeatCount="indefinite"/></circle>
+      <circle cx="1280" cy="344" r="3.5" fill="rgba(196,181,253,.7)"><animate attributeName="opacity" values=".7;.2;.7" dur="2.8s" repeatCount="indefinite"/></circle>
+    </svg>
+  </div>
+  <div class="hero-grid-overlay"></div>
+
+  <div class="hero-inner">
+    <!-- LEFT -->
+    <div class="rv">
+      <div class="hero-pill"><span class="pill-dot"></span>اکنون در دسترس · Non-Custodial · بدون KYC</div>
+      <h1>درگاه دیفای<br>برای <em>تریدر ایرانی</em></h1>
+      <p class="hero-sub">با کیف‌پول خودت، <b>بدون KYC</b> و بدون نگرانی از تحریم،<br>روی پرپ DEXهای جهانی ترید کن.</p>
+
+      <div class="hero-actions">
+        <div class="cta-row">
+          <button class="btn-p" onclick="document.getElementById('hero').scrollIntoView()">شروع بدون KYC ←</button>
+        </div>
+        <!-- Trust micro-text زیر دکمه -->
+        <div class="trust-micro">
+          <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+          بدون ساخت حساب — فقط با اتصال کیف‌پول
+        </div>
+        <a href="#how-it-works" class="btn-s">چطور کار می‌کند؟</a>
+      </div>
+
+      <div class="hero-trust">
+        <div class="trust-badge"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>Non-Custodial</div>
+        <div class="tsep"></div>
+        <div class="trust-badge"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>بدون KYC</div>
+        <div class="tsep"></div>
+        <div class="trust-badge"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>فارسی کامل</div>
+      </div>
+    </div>
+
+    <!-- RIGHT VISUAL -->
+    <div class="hero-right-col rv d2">
+      <div class="hero-visual">
+        <svg viewBox="0 0 480 480" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <defs>
+            <radialGradient id="vglow" cx="50%" cy="50%" r="50%">
+              <stop offset="0%" stop-color="rgba(139,92,246,0.22)"/>
+              <stop offset="100%" stop-color="rgba(139,92,246,0)"/>
+            </radialGradient>
+            <linearGradient id="vline" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="rgba(139,92,246,0)"/>
+              <stop offset="50%" stop-color="rgba(167,139,250,0.7)"/>
+              <stop offset="100%" stop-color="rgba(139,92,246,0)"/>
+            </linearGradient>
+            <linearGradient id="vfill" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(139,92,246,0.28)"/>
+              <stop offset="100%" stop-color="rgba(139,92,246,0)"/>
+            </linearGradient>
+            <linearGradient id="vfill2" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="rgba(74,222,128,0.2)"/>
+              <stop offset="100%" stop-color="rgba(74,222,128,0)"/>
+            </linearGradient>
+            <linearGradient id="dgrad" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#7c3aed"/>
+              <stop offset="100%" stop-color="#a855f7"/>
+            </linearGradient>
+            <linearGradient id="dgrad2" x1="0" y1="0" x2="1" y2="0.5">
+              <stop offset="0%" stop-color="#c084fc"/>
+              <stop offset="100%" stop-color="#a855f7"/>
+            </linearGradient>
+            <filter id="blur4"><feGaussianBlur stdDeviation="4"/></filter>
+            <filter id="blur2"><feGaussianBlur stdDeviation="2"/></filter>
+          </defs>
+
+          <!-- Background glow -->
+          <ellipse cx="240" cy="240" rx="200" ry="180" fill="url(#vglow)"/>
+
+          <!-- Outer ring -->
+          <circle cx="240" cy="240" r="195" stroke="rgba(139,92,246,0.1)" stroke-width="1"/>
+          <circle cx="240" cy="240" r="165" stroke="rgba(139,92,246,0.08)" stroke-width="1" stroke-dasharray="4 8"/>
+          <circle cx="240" cy="240" r="135" stroke="rgba(139,92,246,0.12)" stroke-width="1"/>
+
+          <!-- Main chart area (lower half) -->
+          <path d="M60 340 Q100 320 130 300 Q165 278 195 260 Q220 246 245 230 Q268 216 295 204 Q320 193 350 182 Q378 173 410 165 L420 340 Z"
+            fill="url(#vfill)" opacity="0.7"/>
+          <path d="M60 340 Q100 320 130 300 Q165 278 195 260 Q220 246 245 230 Q268 216 295 204 Q320 193 350 182 Q378 173 410 165"
+            stroke="rgba(139,92,246,0.9)" stroke-width="2.5" fill="none"/>
+
+          <!-- Secondary bullish line -->
+          <path d="M60 360 Q90 348 120 336 Q155 322 185 310 Q215 298 240 290 Q268 281 298 272 Q330 263 370 252 Q400 244 420 238"
+            stroke="rgba(167,139,250,0.35)" stroke-width="1.5" fill="none" stroke-dasharray="6 4"/>
+
+          <!-- Animated scan line -->
+          <line x1="60" y1="0" x2="420" y2="0" stroke="url(#vline)" stroke-width="1" opacity="0.6">
+            <animateTransform attributeName="transform" type="translate" from="0 100" to="0 380" dur="6s" repeatCount="indefinite"/>
+          </line>
+
+          <!-- Data nodes on chart -->
+          <circle cx="195" cy="260" r="5" fill="rgba(139,92,246,0.8)" filter="url(#blur2)"/>
+          <circle cx="195" cy="260" r="3" fill="#a78bfa"/>
+
+          <circle cx="295" cy="204" r="5" fill="rgba(139,92,246,0.8)" filter="url(#blur2)"/>
+          <circle cx="295" cy="204" r="3" fill="#a78bfa"/>
+
+          <circle cx="350" cy="182" r="7" fill="rgba(139,92,246,0.5)" filter="url(#blur4)"/>
+          <circle cx="350" cy="182" r="4" fill="#c4b5fd">
+            <animate attributeName="r" values="4;6;4" dur="2.5s" repeatCount="indefinite"/>
+            <animate attributeName="opacity" values="1;0.5;1" dur="2.5s" repeatCount="indefinite"/>
+          </circle>
+
+          <!-- Green uptrend area (top right) -->
+          <path d="M300 160 Q330 145 360 132 Q390 120 420 112 L420 182 Q390 165 360 155 Q330 148 300 160Z"
+            fill="url(#vfill2)" opacity="0.5"/>
+          <path d="M300 160 Q330 145 360 132 Q390 120 420 112"
+            stroke="rgba(74,222,128,0.6)" stroke-width="1.5" fill="none"/>
+
+          <!-- Diamond logo center -->
+          <g transform="translate(200,170)">
+            <!-- glow behind diamond -->
+            <ellipse cx="40" cy="48" rx="38" ry="42" fill="rgba(139,92,246,0.25)" filter="url(#blur4)"/>
+            <!-- diamond -->
+            <path d="M40 4 L76 30 L40 92 L4 30 Z" fill="url(#dgrad)"/>
+            <path d="M40 4 L76 30 L56 28 L40 4Z" fill="url(#dgrad2)" opacity="0.85"/>
+            <path d="M40 4 L24 28 L4 30 L40 4Z" fill="white" opacity="0.15"/>
+            <path d="M4 30 L24 28 L56 28 L76 30 L56 38 L24 38Z" fill="white" opacity="0.12"/>
+            <path d="M4 30 L24 38 L40 92Z" fill="white" opacity="0.04"/>
+            <path d="M76 30 L56 38 L40 92Z" fill="white" opacity="0.09"/>
+            <circle cx="62" cy="14" r="3" fill="white" opacity="0.7"/>
+          </g>
+
+          <!-- Floating data cards -->
+          <!-- Card 1: BTC price -->
+          <g transform="translate(22,120)">
+            <rect width="120" height="44" rx="10" fill="rgba(14,11,26,0.85)" stroke="rgba(139,92,246,0.25)" stroke-width="1"/>
+            <circle cx="16" cy="22" r="5" fill="#4ade80"/>
+            <text x="28" y="17" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="9" fill="rgba(168,158,200,0.8)" font-weight="600">BTC / USD</text>
+            <text x="28" y="31" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="12" fill="#f0e6ff" font-weight="800">$67,240</text>
+            <text x="90" y="31" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="9" fill="#4ade80" font-weight="700">+2.4%</text>
+          </g>
+
+          <!-- Card 2: ETH price -->
+          <g transform="translate(340,90)">
+            <rect width="116" height="44" rx="10" fill="rgba(14,11,26,0.85)" stroke="rgba(139,92,246,0.25)" stroke-width="1"/>
+            <circle cx="14" cy="22" r="5" fill="#a78bfa"/>
+            <text x="26" y="17" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="9" fill="rgba(168,158,200,0.8)" font-weight="600">ETH / USD</text>
+            <text x="26" y="31" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="12" fill="#f0e6ff" font-weight="800">$3,512</text>
+            <text x="86" y="31" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="9" fill="#4ade80" font-weight="700">+1.8%</text>
+          </g>
+
+          <!-- Card 3: Risk dashboard -->
+          <g transform="translate(22,340)">
+            <rect width="148" height="64" rx="10" fill="rgba(14,11,26,0.88)" stroke="rgba(139,92,246,0.2)" stroke-width="1"/>
+            <text x="12" y="18" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="8" fill="rgba(139,92,246,0.8)" font-weight="700" letter-spacing="1">RISK DASHBOARD</text>
+            <text x="12" y="33" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="9" fill="rgba(168,158,200,0.7)">حد ضرر روزانه</text>
+            <text x="120" y="33" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="9" fill="#c4b5fd" font-weight="700" text-anchor="end">2%</text>
+            <rect x="12" y="40" width="124" height="3" rx="2" fill="rgba(255,255,255,0.07)"/>
+            <rect x="12" y="40" width="38" height="3" rx="2" fill="url(#dgrad)"/>
+            <text x="12" y="56" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="9" fill="rgba(168,158,200,0.7)">ریسک پوزیشن</text>
+            <text x="120" y="56" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="9" fill="#c4b5fd" font-weight="700" text-anchor="end">1.2%</text>
+          </g>
+
+          <!-- Card 4: Non-custodial badge -->
+          <g transform="translate(330,370)">
+            <rect width="128" height="36" rx="10" fill="rgba(14,11,26,0.88)" stroke="rgba(139,92,246,0.2)" stroke-width="1"/>
+            <circle cx="18" cy="18" r="6" fill="rgba(139,92,246,0.2)" stroke="rgba(139,92,246,0.4)" stroke-width="1"/>
+            <text x="30" y="13" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="8" fill="#a78bfa" font-weight="700">Non-Custodial</text>
+            <text x="30" y="27" font-family="'Vazirmatn',Tahoma,sans-serif" font-size="8" fill="rgba(168,158,200,0.6)">دارایی پیش توست</text>
+          </g>
+
+          <!-- Grid lines (subtle) -->
+          <line x1="60" y1="200" x2="420" y2="200" stroke="rgba(139,92,246,0.06)" stroke-width="1"/>
+          <line x1="60" y1="280" x2="420" y2="280" stroke="rgba(139,92,246,0.06)" stroke-width="1"/>
+          <line x1="60" y1="360" x2="420" y2="360" stroke="rgba(139,92,246,0.06)" stroke-width="1"/>
+          <line x1="160" y1="100" x2="160" y2="400" stroke="rgba(139,92,246,0.05)" stroke-width="1"/>
+          <line x1="240" y1="100" x2="240" y2="400" stroke="rgba(139,92,246,0.05)" stroke-width="1"/>
+          <line x1="320" y1="100" x2="320" y2="400" stroke="rgba(139,92,246,0.05)" stroke-width="1"/>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ STATS BAR (یک ردیف، بدون صرافی‌های متصل) ══ -->
+<div class="stats-bar">
+  <div class="stat-cell"><div class="stat-val">۰٪</div><div class="stat-lbl">نیاز به KYC</div></div>
+  <div class="stat-cell"><div class="stat-val">Non-Custodial</div><div class="stat-lbl">دارایی پیش توست</div></div>
+  <div class="stat-cell"><div class="stat-val">۱۰۰٪</div><div class="stat-lbl">رابط فارسی</div></div>
+</div>
+
+<div class="sec-divider"></div>
+
+<!-- ══ WHY DEX ══ -->
+<section id="why-dex">
+  <div class="wrap">
+    <div class="split">
+      <div class="abstract-wrap rv">
+        <div class="ar ar1"></div><div class="ar ar2"></div><div class="ar ar3"></div><div class="ar ar4"></div>
+        <div class="ar-center"></div>
+        <div class="or-dot od1"></div><div class="or-dot od2"></div><div class="or-dot od3"></div><div class="or-dot od4"></div>
+        <div class="ab-lbl al1">Non-Custodial</div>
+        <div class="ab-lbl al2">On-Chain</div>
+        <div class="ab-lbl al3">بدون KYC</div>
+        <div class="ab-lbl al4">شفاف</div>
+      </div>
+      <div>
+        <div class="rv">
+          <div class="eyebrow">چرا DEX؟</div>
+          <h2 class="sec-h2">DEX برای تریدر ایرانی انتخاب منطقی‌تری است</h2>
+          <p class="sec-lead">اگر ایرانی هستی، مشکل تو فقط سود و ضرر بازار نیست. ریسک صرافی متمرکز و تحریم هم همیشه روی میز است.</p>
+        </div>
+        <div class="feat-list rv d1">
+          <div class="feat-row"><div class="feat-icon-wrap"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div><div><div class="feat-title">دارایی زیر کلید خودت</div><p class="feat-text">مستقیم به پرپ DEXهای غیرامانی وصل می‌شوی؛ دارایی روی کیف‌پول خودت است.</p></div></div>
+          <div class="feat-row"><div class="feat-icon-wrap"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div><div><div class="feat-title">بدون KYC و نگرانی از تحریم</div><p class="feat-text">نیازی به ارسال پاسپورت نداری؛ تا وقتی کیف‌پول داری، می‌توانی ترید کنی.</p></div></div>
+          <div class="feat-row"><div class="feat-icon-wrap"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></div><div><div class="feat-title">شفافیت روی زنجیره</div><p class="feat-text">معاملات روی بلاکچین ثبت می‌شوند؛ هر کسی می‌تواند آن‌ها را بررسی کند.</p></div></div>
+          <div class="feat-row"><div class="feat-icon-wrap"><svg viewBox="0 0 24 24"><path d="M5 12h14M12 5l7 7-7 7"/></svg></div><div><div class="feat-title">خروج آسان، بدون گیرکردن</div><p class="feat-text">وقتی پوزیشن بستی، دارایی روی کیف‌پولت است؛ خبری از صف برداشت نیست.</p></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<!-- ══ WHY PARSDEX ══ -->
+<section id="why-parsdex">
+  <div class="wrap">
+    <div class="rv"><div class="eyebrow">چرا ParsDex؟</div><h2 class="sec-h2">بهتر از رفتن مستقیم<br>روی DEXهای خارجی</h2><p class="sec-lead">GMX، Hyperliquid و Ostium عالی‌اند، اما برای تریدر ایرانی نه آموزش مناسب دارند، نه رابط فارسی. ParsDex روی همین زیرساخت‌ها سوار می‌شود.</p></div>
+    <div class="bento rv d1">
+      <div class="bento-cell"><div class="bento-idx">۰۱</div><div class="bento-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></div><div class="bento-title">رابط فارسی، برای ذهن فارسی</div><p class="bento-text">همه‌چیز به فارسی توضیح داده می‌شود؛ از ساخت کیف‌پول تا مفهوم لانگ، شورت و لیکوئید.</p></div>
+      <div class="bento-cell"><div class="bento-idx">۰۲</div><div class="bento-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="bento-title">ابزار مدیریت ریسک واقعی</div><p class="bento-text">Position Size Calculator، حد ضرر روزانه و داشبورد ریسک کل اکانت از روز اول.</p></div>
+      <div class="bento-cell"><div class="bento-idx">۰۳</div><div class="bento-icon"><svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><path d="M8 21h8M12 17v4"/></svg></div><div class="bento-title">یک پنل، چند DEX</div><p class="bento-text">درگاه واحد به GMX، Hyperliquid و پرپ DEXهای دیگر؛ بدون سردرگمی بین سایت‌ها.</p></div>
+      <div class="bento-cell"><div class="bento-idx">۰۴</div><div class="bento-icon"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></div><div class="bento-title">تمرکز روی نیاز ایرانی</div><p class="bento-text">آموزش، محتوا و تجربه کاربری کاملاً متناسب با تریدر فارسی‌زبان طراحی شده.</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<!-- ══ WHO FOR ══ -->
+<section id="who-for">
+  <div class="wrap">
+    <div class="rv"><div class="eyebrow">مخاطبان</div><h2 class="sec-h2">ParsDex برای چه کسانی<br>ساخته شده است؟</h2></div>
+    <div class="who-grid">
+      <div class="who-card rv d1">
+        <div class="who-head"><div class="who-icon-wrap"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="who-head-title">تریدر ایرانی خسته از CEX</div></div>
+        <div class="who-body"><ul class="who-items"><li>از VPN، KYC و استرس بسته‌شدن حساب خسته شده‌ای.</li><li>با بایننس و کوکوین کار کرده‌ای اما DeFi برایت مبهم بوده.</li><li>می‌خواهی بدون درگیر شدن با داکیومنت انگلیسی وارد دنیای خودحضانتی شوی.</li></ul></div>
+      </div>
+      <div class="who-card rv d2">
+        <div class="who-head"><div class="who-icon-wrap"><svg viewBox="0 0 24 24"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg></div><div class="who-head-title">تریدر فیوچرز که مشکلش ریسک است</div></div>
+        <div class="who-body"><ul class="who-items"><li>روی CEX یا پرپ DEX ترید کرده‌ای و چند بار لیکوئید شده‌ای.</li><li>لانگ/شورت/لوریج را می‌فهمی، اما حجم و حد ضرر را بد مدیریت می‌کنی.</li><li>دنبال ابزاری هستی که برایت ترمز دستی و داشبورد ریسک بسازد.</li></ul></div>
+      </div>
+    </div>
+    <!-- CTA اضافه‌شده -->
+    <div class="who-footer rv">
+      <p>اگر در یکی از این دو دسته هستی، <strong>ParsDex دقیقاً برای تو ساخته شده.</strong></p>
+      <a href="#hero" class="btn-ghost">شروع بدون KYC ←</a>
+    </div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<!-- ══ HOW IT WORKS ══ -->
+<section id="how-it-works">
+  <div class="wrap">
+    <div class="rv"><div class="eyebrow">نحوه کار</div><h2 class="sec-h2">ParsDex چطور کار می‌کند؟</h2></div>
+    <div class="steps rv d1">
+      <div class="step"><div class="step-n">۱</div><div class="step-icon"><svg viewBox="0 0 24 24"><rect x="2" y="6" width="20" height="14" rx="2"/><path d="M22 10H2"/></svg></div><div class="step-title">کیف‌پولت را وصل کن</div><p class="step-text">MetaMask یا هر کیف‌پول Web3 سازگار؛ بدون ایمیل و KYC.</p></div>
+      <div class="step"><div class="step-n">۲</div><div class="step-icon"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg></div><div class="step-title">ویزارد فارسی را دنبال کن</div><p class="step-text">قدم‌به‌قدم از ساخت کیف‌پول تا اتصال به پرپ DEX راهنمایی می‌شوی.</p></div>
+      <div class="step"><div class="step-n">۳</div><div class="step-icon"><svg viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div><div class="step-title">ابزار ریسک را فعال کن</div><p class="step-text">حد ضرر روزانه، حجم پوزیشن و داشبورد ریسک کل اکانت.</p></div>
+      <div class="step"><div class="step-n">۴</div><div class="step-icon"><svg viewBox="0 0 24 24"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg></div><div class="step-title">ترید کن — ما فقط رابطیم</div><p class="step-text">تو با کیف‌پولت روی پروتکل‌های غیرامانی ترید می‌کنی؛ ParsDex فقط رابط توست.</p></div>
+    </div>
+  </div>
+</section>
+
+<div class="sec-divider"></div>
+
+<!-- ══ TRUST (بدون کارت کارمزد) ══ -->
+<section id="trust">
+  <div class="wrap">
+    <div class="rv"><div class="eyebrow">امنیت</div><h2 class="sec-h2">امنیت و شفافیت<br>در ParsDex</h2></div>
+    <div class="trust-grid rv d1">
+      <div class="trust-cell">
+        <div class="trust-icon"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+        <div class="trust-tag">Non-Custodial</div>
+        <div class="trust-title">غیرامانی کامل</div>
+        <p class="trust-text">ParsDex هرگز دارایی تو را نگه‌داری نمی‌کند؛ همه‌چیز در کیف‌پول و قراردادهای پروتکل‌های پایه است.</p>
+      </div>
+      <div class="trust-cell">
+        <div class="trust-icon"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div>
+        <div class="trust-tag">Audited Protocols</div>
+        <div class="trust-title">پروتکل‌های امتحان‌شده</div>
+        <p class="trust-text">فقط روی پروتکل‌هایی با سابقه امنیتی شفاف سوار می‌شویم؛ میلیاردها دلار از این پروتکل‌ها رد شده.</p>
+      </div>
+      <div class="trust-cell">
+        <div class="trust-icon"><svg viewBox="0 0 24 24"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg></div>
+        <div class="trust-tag">Risk Education</div>
+        <div class="trust-title">آموزش ریسک، نه وعده سود</div>
+        <p class="trust-text">به‌جای قول سودهای عجیب، روی آموزش مدیریت ریسک، حد ضرر و لوریج منطقی تمرکز داریم.</p>
+      </div>
+      <div class="trust-cell">
+        <div class="trust-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg></div>
+        <div class="trust-tag">No Hidden Risk</div>
+        <div class="trust-title">بدون ریسک پنهان</div>
+        <p class="trust-text">قبل از هر تراکنش، تمام جزئیات آن شامل شبکه، مقدار و پروتکل مقصد به‌وضوح نمایش داده می‌شود.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ══ CTA ══ -->
+<section id="cta">
+  <div class="cta-inner rv">
+    <h2 class="cta-h2">آماده‌ای شروع کنی؟</h2>
+    <p class="cta-sub">بدون KYC · بدون واسطه · با کیف‌پول خودت</p>
+    <div class="cta-acts">
+      <button class="btn-p">شروع بدون KYC ←</button>
+      <a href="#how-it-works" class="btn-s">بیشتر بدان</a>
+    </div>
+  </div>
+</section>
+
+<!-- ══ FOOTER ══ -->
+<footer>
+  <div class="foot-inner">
+    <div>
+      <div class="foot-logo">
+        <svg width="20" height="20" viewBox="0 0 40 46" fill="none"><defs><linearGradient id="fg" x1="0" y1="0" x2="40" y2="46"><stop offset="0%" stop-color="#7c3aed"/><stop offset="100%" stop-color="#a855f7"/></linearGradient></defs><path d="M20 2L38 16L20 44L2 16Z" fill="url(#fg)"/><path d="M20 2L38 16L28 14L20 2Z" fill="white" opacity="0.2"/><path d="M2 16L12 14L28 14L38 16L28 19L12 19Z" fill="white" opacity="0.1"/></svg>
+        <span class="foot-logo-text">Pars<span>Dex</span></span>
+      </div>
+      <div class="foot-copy">© ۱۴۰۴ · همه حقوق محفوظ است</div>
+    </div>
+    <p class="foot-note">ParsDex یک رابط Web3 غیرامانی است. دارایی‌های شما همیشه در کیف‌پول خودتان است. این پلتفرم مسئولیتی در قبال تصمیمات معاملاتی کاربران ندارد.</p>
+  </div>
+</footer>
+
+<!-- ══ SCRIPTS ══ -->
+<script>
+// ── Reveal on scroll ──
+const io=new IntersectionObserver(e=>{
+  e.forEach(x=>{if(x.isIntersecting){x.target.classList.add('on');io.unobserve(x.target)}})
+},{threshold:.1});
+document.querySelectorAll('.rv').forEach(el=>io.observe(el));
+
+// ── Live ticker via CoinGecko (رایگان، بدون API Key) ──
+const COINS=[
+  {id:'bitcoin',sym:'BTC/USD'},
+  {id:'ethereum',sym:'ETH/USD'},
+  {id:'solana',sym:'SOL/USD'},
+  {id:'arbitrum',sym:'ARB/USD'},
+  {id:'binancecoin',sym:'BNB/USD'},
+  {id:'gmx',sym:'GMX/USD'},
+  {id:'chainlink',sym:'LINK/USD'},
+  {id:'matic-network',sym:'MATIC/USD'},
+];
+
+// طلا و نفت از API جداگانه
+const EXTRA=[
+  {sym:'XAU/USD',label:'طلا'},
+  {sym:'OIL/USD',label:'نفت برنت'},
+];
+
+function toFa(n){
+  return n.toLocaleString('fa-IR',{maximumFractionDigits:n>100?0:n>1?2:4});
+}
+
+function buildTickerHTML(data){
+  let items='';
+  data.forEach(c=>{
+    const up=c.change>=0;
+    items+=`<span class="t-item">
+      <span class="t-sym">${c.sym}</span>
+      <span class="t-price">${toFa(c.price)}</span>
+      <span class="${up?'t-up':'t-dn'}">${up?'↑':'↓'} ${Math.abs(c.change).toFixed(2)}٪</span>
+    </span>`;
+  });
+  // دوبار برای loop بی‌درنگ
+  return items+items;
+}
+
+async function fetchTicker(){
+  try{
+    const ids=COINS.map(c=>c.id).join(',');
+    const url=`https://api.coingecko.com/api/v3/simple/price?ids=${ids}&vs_currencies=usd&include_24hr_change=true`;
+    const res=await fetch(url);
+    const json=await res.json();
+    const data=COINS.map(c=>({
+      sym:c.sym,
+      price:json[c.id]?.usd||0,
+      change:json[c.id]?.usd_24h_change||0,
+    })).filter(c=>c.price>0);
+    document.getElementById('ticker-track').innerHTML=buildTickerHTML(data);
+  }catch(e){
+    // اگر API بلاک بود، داده‌های نمونه نمایش بده
+    const fallback=[
+      {sym:'BTC/USD',price:67240,change:2.4},
+      {sym:'ETH/USD',price:3512,change:1.8},
+      {sym:'SOL/USD',price:178.4,change:-0.6},
+      {sym:'ARB/USD',price:1.24,change:3.2},
+      {sym:'BNB/USD',price:412,change:-0.3},
+      {sym:'GMX/USD',price:42.8,change:1.1},
+      {sym:'LINK/USD',price:18.5,change:0.9},
+    ];
+    document.getElementById('ticker-track').innerHTML=buildTickerHTML(fallback);
+  }
+}
+
+fetchTicker();
+// هر ۶۰ ثانیه آپدیت کن
+setInterval(fetchTicker,60000);
+</script>
+</body>
+</html>
